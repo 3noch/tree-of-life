@@ -1,0 +1,41 @@
+name: frontend
+version: 0.1
+cabal-version: >= 1.8
+build-type: Simple
+
+library
+  hs-source-dirs: src
+  build-depends:
+      base
+    , common
+    , ghcjs-dom
+    , lens
+    , mtl
+    , obelisk-frontend
+    , obelisk-generated-static
+    , obelisk-route
+    , reflex-dom-core
+    , text
+  if impl(ghc)
+    build-depends: jsaddle
+  if impl(ghcjs)
+    build-depends: ghcjs-base
+  exposed-modules:
+    Frontend
+    Frontend.Selection
+  ghc-options: -Wall
+
+executable frontend
+  main-is: main.hs
+  hs-source-dirs: src-bin
+  build-depends:
+      base
+    , common
+    , obelisk-frontend
+    , obelisk-route
+    , reflex-dom
+    , obelisk-generated-static
+    , frontend
+  ghc-options: -threaded
+  if os(darwin)
+     ghc-options: -dynamic
