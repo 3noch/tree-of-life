@@ -17,6 +17,7 @@ import           Control.Monad.Trans (liftIO)
 import           Data.Text           (Text)
 import qualified GHCJS.DOM.Selection as Selection
 import Data.Functor (($>))
+import Data.Traversable (for)
 
 #if defined(ghcjs_HOST_OS)
 import           GHCJS.Foreign.Callback as Callback
@@ -78,16 +79,21 @@ getSelectionRaw = do
 
 getSelection
   :: (FfiConstraints t m)
-  => Event t (Selection.Selection -> DomTypes.JSM a) -> m (Event t a)
-getSelection ev =
-  performEvent $ ffor ev $ \f -> DomTypes.liftJSM $ f =<< getSelectionRaw
-
-getSelectionString
-  :: (FfiConstraints t m)
-  => m (Event t Text)
-getSelectionString = do
+  => (Selection.Selection -> DomTypes.JSM a) -> m (Event t a)
+getSelection f = do
   pb <- getPostBuild
-  change <- setDocumentOnSelectionChange pb
-  getSelection $ change $> \sel -> do
-    r <- Selection.toString sel
-    pure $ DomTypes.fromJSString r
+  changed <- setDocumentOnSelectionChange pb
+  performEvent $ ffor changed $ \() -> DomTypes.liftJSM $ f =<< getSelectionRaw
+
+selectionToString :: Selection.Selection -> DomTypes.JSM Text
+selectionToString sel = DomTypes.fromJSString <$> Selection.toString sel
+
+selectionRange :: Selection.Selection -> DomTypes.JSM (Maybe (DomTypes.Node, Int), Maybe (DomTypes.Node, Int))
+selectionRange sel = do
+  anchorNode' <- Selection.getAnchorNode sel
+  left <- for anchorNode' $ \node ->
+    (,) node . fromIntegral <$> Selection.getAnchorOffset sel -- TODO: Overflow detection
+  focusNode' <- Selection.getFocusNode sel
+  right <- for focusNode' $ \node ->
+    (,) node . fromIntegral <$> Selection.getFocusOffset sel -- TODO: Overflow detection
+  pure (left, right)
